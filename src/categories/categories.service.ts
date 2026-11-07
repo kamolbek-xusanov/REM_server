@@ -1,26 +1,59 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { CreateCategoryDto } from './dto/create-category.dto.js';
 import { UpdateCategoryDto } from './dto/update-category.dto.js';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class CategoriesService {
-  create(createCategoryDto: CreateCategoryDto) {
-    return 'This action adds a new category';
+
+  constructor(private prisma: PrismaService) { }
+
+
+
+  async create(createCategoryDto: CreateCategoryDto) {
+    try {
+      return await this.prisma.category.create({ data: createCategoryDto })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Category already exists')
+      }
+      throw error
+    }
   }
 
-  findAll() {
-    return `This action returns all categories`;
+  async findAll() {
+    return await this.prisma.category.findMany({ orderBy: { name: 'asc' } })
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} category`;
+  async update(id: number, updateCategoryDto: UpdateCategoryDto) {
+    const category = await this.prisma.category.findUnique({
+      where: { id }
+    });
+
+    if (!category) {
+      throw new NotFoundException('Category not found')
+    }
+
+    return await this.prisma.category.update({
+      where: {id},
+      data: updateCategoryDto
+    })
   }
 
-  update(id: number, updateCategoryDto: UpdateCategoryDto) {
-    return `This action updates a #${id} category`;
-  }
+  async remove(id: number) {
+    const category = await this.prisma.category.findUnique({
+      where: { id }
+    })
+    if (!category) {
+      throw new NotFoundException('Category not found')
+    }
 
-  remove(id: number) {
-    return `This action removes a #${id} category`;
+    const count = await this.prisma.property.count({ where: { categoryId: id } })
+    if (count > 0) {
+      throw new ConflictException("Kategoriyada e'lonlar bor")
+    }
+
+    return this.prisma.category.delete({ where: { id } })
   }
 }
