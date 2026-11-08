@@ -9,15 +9,21 @@ import { JwtAuthGuard } from '../common/guards/jwt-auth/jwt-auth.guard.js'
 import { CurrentUser } from '../common/decorators/current-user/current-user.decorator.js'
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto/pagination-query.dto.js'
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth/optional-jwt-auth.guard.js'
+import { QueryPropertiesDto } from './dto/query-properties.dto.js'
 
 @Controller('properties')
 export class PropertiesController {
-  constructor(private readonly propertiesService: PropertiesService) {}
+  constructor(private readonly propertiesService: PropertiesService) { }
 
   @Post()
   @UseGuards(JwtAuthGuard)
   create(@CurrentUser('id') userId: number, @Body() dto: CreatePropertyDto) {
     return this.propertiesService.create(userId, dto)
+  }
+
+  @Get()
+  findAll(@Query() query: QueryPropertiesDto) {
+    return this.propertiesService.findAll(query)
   }
 
   @Get(':id')
