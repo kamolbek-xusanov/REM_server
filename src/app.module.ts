@@ -9,6 +9,10 @@ import { FavoritesModule } from './favorites/favorites.module.js';
 import { PropertiesModule } from './properties/properties.module.js';
 import { CategoriesModule } from './categories/categories.module.js';
 import { AuthModule } from './auth/auth.module.js';
+import { ServeStaticModule } from '@nestjs/serve-static';
+import { join } from 'path';
+
+
 
 @Module({
   imports: [
@@ -20,8 +24,12 @@ import { AuthModule } from './auth/auth.module.js';
     FavoritesModule,
     InquiriesModule,
     AdminModule,
+    ServeStaticModule.forRoot({
+      rootPath: join(process.cwd(), 'uploads'),
+      serveRoot: '/uploads'
+    })
   ],
   controllers: [AppController],
   providers: [AppService],
 })
-export class AppModule {}
+export class AppModule { }

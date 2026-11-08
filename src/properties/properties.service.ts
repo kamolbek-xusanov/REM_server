@@ -5,6 +5,8 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto/pagination-query.dto.js';
 import { Prisma } from '@prisma/client';
 import { QueryPropertiesDto } from './dto/query-properties.dto.js';
+import { unlink } from 'fs/promises';
+import { join } from 'path';
 
 export type AuthUser = { id: number, role: string } | undefined
 
@@ -113,6 +115,46 @@ export class PropertiesService {
   }
 
 
+  async addImage(
+    propertyId: number,
+    userId: number,
+    file: Express.Multer.File,
+  ) {
+    if (!file) {
+      throw new BadRequestException('Image file is required')
+    }
+
+    try {
+      const property = await this.prisma.property.findUnique({
+        where: { id: propertyId },
+      })
+      if (!property) {
+        throw new NotFoundException('Property not found')
+      }
+
+      if (property.ownerId !== userId) {
+        throw new ForbiddenException('You can only add images to your own property')
+      }
+
+      const last = await this.prisma.propertyImage.findFirst({
+        where: { propertyId },
+        orderBy: { sortOrder: 'desc' },
+      })
+      const sortOrder = last ? last.sortOrder + 1 : 0
+
+      return await this.prisma.propertyImage.create({
+        data: {
+          url: '/uploads/' + file.filename,
+          propertyId,
+          sortOrder,
+        },
+      })
+    } catch (error) {
+      await unlink(file.path).catch(() => { })
+      throw error
+    }
+  }
+
   async update(id: number, userId: number, updatePropertyDto: UpdatePropertyDto) {
     const property = await this.prisma.property.findUnique({
       where: { id }
@@ -158,6 +200,39 @@ export class PropertiesService {
     await this.prisma.property.delete({ where: { id } })
     return { message: 'Property deleted' }
   }
+
+  async removeImage(propertyId: number, imageId: number, userId: number) {
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId }
+    })
+
+    if (!property) {
+      throw new NotFoundException("Property not found")
+    }
+
+    if (property.ownerId !== userId) {
+      throw new ForbiddenException('You can only delete images of your own property')
+    }
+
+    const image = await this.prisma.propertyImage.findUnique({
+      where: { id: imageId }
+    })
+
+    if (!image || image.propertyId !== propertyId) {
+      throw new NotFoundException('Image not found')
+    }
+
+    await this.prisma.propertyImage.delete({ where: { id: imageId } })
+
+    try {
+      await unlink(join(process.cwd(), image.url))
+    } catch {
+
+    }
+
+    return { message: 'Image deleted' }
+  }
+
 
   async findMine(userId: number, query: PaginationQueryDto) {
     const page = query.page ?? 1

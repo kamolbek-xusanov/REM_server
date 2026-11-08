@@ -10,6 +10,9 @@ import { CurrentUser } from '../common/decorators/current-user/current-user.deco
 import { PaginationQueryDto } from '../common/dto/pagination-query.dto/pagination-query.dto.js'
 import { OptionalJwtAuthGuard } from '../common/guards/optional-jwt-auth/optional-jwt-auth.guard.js'
 import { QueryPropertiesDto } from './dto/query-properties.dto.js'
+import { UseInterceptors, UploadedFile } from '@nestjs/common'
+import { FileInterceptor } from '@nestjs/platform-express'
+import { multerOptions } from './multer.config.js'
 
 @Controller('properties')
 export class PropertiesController {
@@ -54,6 +57,13 @@ export class PropertiesController {
     return this.propertiesService.update(id, userId, dto)
   }
 
+  @Post(':id/images')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('file', multerOptions))
+  addImage(@Param('id', ParseIntPipe) id: number, @CurrentUser('id') userId: number, @UploadedFile() file: Express.Multer.File) {
+    return this.propertiesService.addImage(id, userId, file)
+  }
+
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   remove(
@@ -61,5 +71,11 @@ export class PropertiesController {
     @CurrentUser('id') userId: number,
   ) {
     return this.propertiesService.remove(id, userId)
+  }
+
+  @Delete(':id/images/:imageId')
+  @UseGuards(JwtAuthGuard)
+  removeImage(@Param('id', ParseIntPipe) id: number, @Param('imageId', ParseIntPipe) ImageId: number, @CurrentUser('id') userId: number) {
+    return this.propertiesService.removeImage(id, ImageId, userId)
   }
 }
