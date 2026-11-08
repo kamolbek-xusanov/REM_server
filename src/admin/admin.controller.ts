@@ -1,34 +1,32 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Patch, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service.js';
-import { CreateAdminDto } from './dto/create-admin.dto.js';
-import { UpdateAdminDto } from './dto/update-admin.dto.js';
+import { JwtAuthGuard } from '../common/guards/jwt-auth/jwt-auth.guard.js';
+import { RolesGuard } from '../common/guards/roles/roles.guard.js';
+import { Roles } from '../common/decorators/roles/roles.decorator.js';
+import { AdminPropertiesQueryDto } from './dto/admin-properties-query.dto.js';
+import { UpdateStatusDto } from './dto/update-status.dto.js';
 
 @Controller('admin')
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('ADMIN')
 export class AdminController {
-  constructor(private readonly adminService: AdminService) {}
+  constructor(private adminService: AdminService) { }
 
-  @Post()
-  create(@Body() createAdminDto: CreateAdminDto) {
-    return this.adminService.create(createAdminDto);
+  @Get('properties')
+  listProperties(@Query() query: AdminPropertiesQueryDto) {
+    return this.adminService.listProperties(query)
   }
 
-  @Get()
-  findAll() {
-    return this.adminService.findAll();
+  @Patch('properties/:id/status')
+  updateStatus(
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateStatusDto,
+  ) {
+    return this.adminService.updateStatus(id, dto.status)
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.adminService.findOne(+id);
-  }
-
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateAdminDto: UpdateAdminDto) {
-    return this.adminService.update(+id, updateAdminDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.adminService.remove(+id);
+  @Get('users')
+  listUsers() {
+    return this.adminService.listUsers()
   }
 }

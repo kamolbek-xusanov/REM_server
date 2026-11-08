@@ -1,26 +1,70 @@
-import { Injectable } from '@nestjs/common';
-import { CreateAdminDto } from './dto/create-admin.dto.js';
-import { UpdateAdminDto } from './dto/update-admin.dto.js';
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service.js';
+import { AdminPropertiesQueryDto } from './dto/admin-properties-query.dto.js';
+import { PropertyStatus } from '@prisma/client';
 
 @Injectable()
 export class AdminService {
-  create(createAdminDto: CreateAdminDto) {
-    return 'This action adds a new admin';
+  constructor(private prisma: PrismaService) { }
+
+  async listProperties(query: AdminPropertiesQueryDto) {
+    const page = query.page ?? 1
+    const limit = query.limit ?? 10
+    const status = query.status ?? PropertyStatus.PENDING
+
+    const where = { status }
+
+    const [items, total] = await Promise.all([
+      this.prisma.property.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * limit,
+        take: limit,
+        include: {
+          images: true,
+          category: true,
+          owner: {
+            select: { id: true, fullName: true, email: true, phone: true }
+          }
+        }
+      }),
+      this.prisma.property.count({ where }),
+    ])
+
+    return { items, total, page, limit, totalPages: Math.ceil(total / limit) }
   }
 
-  findAll() {
-    return `This action returns all admin`;
+  async updateStatus(id: number, status: PropertyStatus) {
+    const property = await this.prisma.property.findUnique({
+      where: { id }
+    })
+
+    if (!property) {
+      throw new NotFoundException('Property not found')
+    }
+
+    return this.prisma.property.update({
+      where: { id },
+      data: { status },
+      include: {
+        images: true,
+        category: true,
+        owner: { select: { id: true, fullName: true, email: true, phone: true } },
+      },
+    })
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} admin`;
-  }
-
-  update(id: number, updateAdminDto: UpdateAdminDto) {
-    return `This action updates a #${id} admin`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} admin`;
+  async listUsers() {
+    return this.prisma.user.findMany({
+      select: {
+        id: true,
+        fullName: true,
+        email: true,
+        phone: true,
+        role: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
   }
 }
