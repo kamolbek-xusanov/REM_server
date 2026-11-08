@@ -1,34 +1,36 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { FavoritesService } from './favorites.service.js';
-import { CreateFavoriteDto } from './dto/create-favorite.dto.js';
-import { UpdateFavoriteDto } from './dto/update-favorite.dto.js';
+import { Controller, Delete, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common'
+import { FavoritesService } from './favorites.service.js'
+import { JwtAuthGuard } from '../common/guards/jwt-auth/jwt-auth.guard.js'
+import { CurrentUser } from '../common/decorators/current-user/current-user.decorator.js'
 
 @Controller('favorites')
+@UseGuards(JwtAuthGuard)
 export class FavoritesController {
-  constructor(private readonly favoritesService: FavoritesService) {}
 
-  @Post()
-  create(@Body() createFavoriteDto: CreateFavoriteDto) {
-    return this.favoritesService.create(createFavoriteDto);
-  }
+  constructor(private readonly favoritesService: FavoritesService) { }
+
 
   @Get()
-  findAll() {
-    return this.favoritesService.findAll();
+  findMine(@CurrentUser('id') userId: number) {
+    return this.favoritesService.findMine(userId)
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.favoritesService.findOne(+id);
+
+  @Post(':propertyId')
+  add(
+    @CurrentUser('id') userId: number,
+    @Param('propertyId', ParseIntPipe) propertyId: number
+  ) {
+    return this.favoritesService.add(userId, propertyId)
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateFavoriteDto: UpdateFavoriteDto) {
-    return this.favoritesService.update(+id, updateFavoriteDto);
-  }
 
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.favoritesService.remove(+id);
+
+  @Delete(':propertyId')
+  remove(
+    @CurrentUser('id') userId: number,
+    @Param('propertyId', ParseIntPipe) propertyId: number
+  ) {
+    return this.favoritesService.remove(userId, propertyId)
   }
 }

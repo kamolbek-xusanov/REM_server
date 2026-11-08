@@ -1,34 +1,30 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
-import { InquiriesService } from './inquiries.service.js';
-import { CreateInquiryDto } from './dto/create-inquiry.dto.js';
-import { UpdateInquiryDto } from './dto/update-inquiry.dto.js';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, UseGuards } from '@nestjs/common'
+import { InquiriesService } from './inquiries.service.js'
+import { CreateInquiryDto } from './dto/create-inquiry.dto.js'
+import { JwtAuthGuard } from '../common/guards/jwt-auth/jwt-auth.guard.js'
+import { CurrentUser } from '../common/decorators/current-user/current-user.decorator.js'
 
-@Controller('inquiries')
+
+
+@Controller()
+@UseGuards(JwtAuthGuard)
 export class InquiriesController {
-  constructor(private readonly inquiriesService: InquiriesService) {}
 
-  @Post()
-  create(@Body() createInquiryDto: CreateInquiryDto) {
-    return this.inquiriesService.create(createInquiryDto);
+  constructor(private readonly inquiriesService: InquiriesService) { }
+
+  @Post('properties/:propertyId/inquiries')
+  create(
+    @CurrentUser('id') userId: number,
+    @Param('propertyId', ParseIntPipe) propertyId: number,
+    @Body() dto: CreateInquiryDto
+  ) {
+    return this.inquiriesService.create(userId, propertyId, dto)
   }
 
-  @Get()
-  findAll() {
-    return this.inquiriesService.findAll();
-  }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.inquiriesService.findOne(+id);
-  }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Body() updateInquiryDto: UpdateInquiryDto) {
-    return this.inquiriesService.update(+id, updateInquiryDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.inquiriesService.remove(+id);
+  @Get('inquiries/my')
+  findMine(@CurrentUser('id') userId: number) {
+    return this.inquiriesService.findMine(userId)
   }
 }

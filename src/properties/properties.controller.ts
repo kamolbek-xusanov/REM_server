@@ -13,6 +13,7 @@ import { QueryPropertiesDto } from './dto/query-properties.dto.js'
 import { UseInterceptors, UploadedFile } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { multerOptions } from './multer.config.js'
+import { ApiBody, ApiConsumes } from '@nestjs/swagger'
 
 @Controller('properties')
 export class PropertiesController {
@@ -57,6 +58,14 @@ export class PropertiesController {
     return this.propertiesService.update(id, userId, dto)
   }
 
+
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: { file: { type: 'string', format: 'binary' } },
+    },
+  })
   @Post(':id/images')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('file', multerOptions))

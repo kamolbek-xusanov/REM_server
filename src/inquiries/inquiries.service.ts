@@ -1,26 +1,44 @@
-import { Injectable } from '@nestjs/common';
-import { CreateInquiryDto } from './dto/create-inquiry.dto.js';
-import { UpdateInquiryDto } from './dto/update-inquiry.dto.js';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
+import { PrismaService } from '../prisma/prisma.service.js'
+import { CreateInquiryDto } from './dto/create-inquiry.dto.js'
 
 @Injectable()
 export class InquiriesService {
-  create(createInquiryDto: CreateInquiryDto) {
-    return 'This action adds a new inquiry';
+  
+  constructor(private prisma: PrismaService) { }
+
+  async create(senderId: number, propertyId: number, dto: CreateInquiryDto) {
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId }
+    })
+
+    if (!property || property.status !== 'APPROVED') {
+      throw new NotFoundException('Property not found')
+    }
+
+    if (property.ownerId === senderId) {
+      throw new BadRequestException('You cannot send an inquiry to your own property')
+    }
+
+    return this.prisma.inquiry.create({
+      data: {
+        message: dto.message,
+        phone: dto.phone,
+        senderId,
+        propertyId
+      }
+    })
   }
 
-  findAll() {
-    return `This action returns all inquiries`;
-  }
 
-  findOne(id: number) {
-    return `This action returns a #${id} inquiry`;
-  }
 
-  update(id: number, updateInquiryDto: UpdateInquiryDto) {
-    return `This action updates a #${id} inquiry`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} inquiry`;
+  async findMine(senderId: number) {
+    return this.prisma.inquiry.findMany({
+      where: { senderId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        property: { select: { id: true, title: true } }
+      }
+    })
   }
 }

@@ -1,9 +1,9 @@
-import { Module } from '@nestjs/common';
-import { InquiriesService } from './inquiries.service.js';
-import { InquiriesController } from './inquiries.controller.js';
+import { Module } from '@nestjs/common'
+import { InquiriesService } from './inquiries.service.js'
+import { InquiriesController } from './inquiries.controller.js'
 
 @Module({
   controllers: [InquiriesController],
-  providers: [InquiriesService],
+  providers: [InquiriesService]
 })
-export class InquiriesModule {}
+export class InquiriesModule { }

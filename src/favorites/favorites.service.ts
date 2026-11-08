@@ -1,26 +1,54 @@
-import { Injectable } from '@nestjs/common';
-import { CreateFavoriteDto } from './dto/create-favorite.dto.js';
-import { UpdateFavoriteDto } from './dto/update-favorite.dto.js';
+import { ConflictException, Injectable, NotFoundException } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
+import { PrismaService } from '../prisma/prisma.service.js'
 
 @Injectable()
 export class FavoritesService {
-  create(createFavoriteDto: CreateFavoriteDto) {
-    return 'This action adds a new favorite';
+
+  constructor(private prisma: PrismaService) { }
+
+  async add(userId: number, propertyId: number) {
+    const property = await this.prisma.property.findUnique({
+      where: { id: propertyId }
+    })
+
+    if (!property || property.status !== 'APPROVED') {
+      throw new NotFoundException('Property not found')
+    }
+
+    try {
+      return await this.prisma.favorite.create({
+        data: { userId, propertyId }
+      })
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002') {
+        throw new ConflictException('Already in favorites')
+      }
+      throw error
+    }
   }
 
-  findAll() {
-    return `This action returns all favorites`;
+
+  
+  async remove(userId: number, propertyId: number) {
+    const result = await this.prisma.favorite.deleteMany({
+      where: { userId, propertyId }
+    })
+
+    if (result.count === 0) {
+      throw new NotFoundException('Favorite not found')
+    }
+
+    return { message: 'Removed from favorites' }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} favorite`;
-  }
-
-  update(id: number, updateFavoriteDto: UpdateFavoriteDto) {
-    return `This action updates a #${id} favorite`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} favorite`;
+  async findMine(userId: number) {
+    return this.prisma.favorite.findMany({
+      where: { userId, property: { status: 'APPROVED' } },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        property: { include: { images: true, category: true } }
+      }
+    })
   }
 }
